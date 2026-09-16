@@ -1,0 +1,8 @@
+Razer Obfuscator third-party notices
+=====================================
+
+No third-party VM implementation is bundled in this release.
+
+`uniquadev/LuauVM` is mentioned in README.md as a possible research candidate only; no source from that repository is included here.
+
+If a VM implementation is integrated in a future release, this file must be updated with the actual repository URL, license text/notice, copyright holders, and the precise files copied or modified.
