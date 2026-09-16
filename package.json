@@ -1,14 +1,20 @@
-{
-  "name": "roblox-lua-obfuscator",
-  "version": "1.1.0",
-  "description": "A dependency-free Lua/Luau source obfuscator and web UI for Roblox Studio projects.",
-  "main": "src/obfuscator.js",
-  "bin": { "lua-obfuscator": "bin/lua-obfuscator.js" },
-  "scripts": {
-    "test": "node test/obfuscator.test.js",
-    "start": "node server.js"
-  },
-  "keywords": ["lua", "luau", "roblox", "obfuscator"],
-  "license": "MIT",
-  "engines": { "node": ">=18" }
-}
+const assert = require('assert');
+const { obfuscate, wrapStandaloneSource } = require('../src/obfuscator');
+
+const source = `local value = 42\nprint(value)\nlocal x = game:GetService("Players")\n`;
+
+const result = obfuscate(source, { level: 2, seed: 7 });
+assert(result.code.includes('tonumber('));
+assert(result.code.includes('string.char'));
+assert(!result.code.includes('local value = 42'));
+
+const standalone = obfuscate(source, { level: 2, standalone: true, seed: 7 }).code;
+assert(standalone.includes('_PAYLOAD'));
+assert(standalone.includes('loadstring or load'));
+assert(standalone.includes('string.char((byte - _KEY) % 256)'));
+
+const wrapped = wrapStandaloneSource('print("hello")');
+assert(wrapped.includes('_PAYLOAD'));
+assert(wrapped.includes('_FN()'));
+
+console.log('obfuscator tests passed');

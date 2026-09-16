@@ -1,35 +1,86 @@
-# Roblox Lua/Luau Obfuscator
+#!/usr/bin/env node
+'use strict';
 
-A small, dependency-free source obfuscator for Roblox projects. It is intentionally conservative: it uses a lexer instead of regular expressions, never rewrites comments or strings, and keeps Roblox/Lua built-ins in a blacklist.
+const fs = require('fs');
+const { obfuscate } = require('../src/obfuscator');
 
-## Features
+function usage() {
+  console.error(`Usage: lua-obfuscator <input.lua> [-o output.lua] [options]
 
-- **Level 1:** local/parameter renaming and runtime numeric constant encoding.
-- **Level 2:** Level 1 plus escaped source packing in a chunked runtime loader.
-- **Level 3:** currently the same safe transforms as Level 2; reserved for future control-flow/VM passes rather than pretending those transformations are semantics-safe.
-- Lua 5.1 and Luau-friendly output; no npm dependencies.
-- Deterministic builds with `--seed`.
-- Custom blacklist support for project globals.
+Options:
+  --level <1|2|3>       1 = rename + constants, 2 = string hiding + pack, 3 = strongest safe mode
+  --rename              Force renaming
+  --constants           Force constant encoding
+  --strings             Force string encoding
+  --pack                Pack into a runtime loader
+  --standalone          Emit a single paste-and-run Luau script with no external HTTPS
+  --seed <number>       Stable deterministic output seed
+  --blacklist <file>    Path to a newline-delimited global blacklist
+  --stdout              Write output to stdout
+  --help                Show this message
+`);
+  process.exit(2);
+}
 
-This is a source transformer, not a cryptographic protection boundary. A runtime loader can always be instrumented, and `loadstring` must be enabled in the Roblox environment. Do not use obfuscation as a substitute for server-side validation or secret management.
+const args = process.argv.slice(2);
+if (!args.length || args.includes('--help') || args.includes('-h')) usage();
 
-## Install and use
+const input = args.shift();
+const options = { level: 1 };
+let outputPath = null;
 
-```bash
-npm test
-node bin/lua-obfuscator.js game.lua -o game.obfuscated.lua --level 2 --seed 1234
-node bin/lua-obfuscator.js game.lua --stdout --rename --constants
-```
+for (let i = 0; i < args.length; i++) {
+  const arg = args[i];
+  switch (arg) {
+    case '-o':
+      outputPath = args[++i];
+      break;
+    case '--level':
+      options.level = Number(args[++i]);
+      break;
+    case '--rename':
+      options.rename = true;
+      break;
+    case '--constants':
+      options.constants = true;
+      break;
+    case '--strings':
+      options.strings = true;
+      break;
+    case '--pack':
+      options.pack = true;
+      break;
+    case '--standalone':
+      options.standalone = true;
+      break;
+    case '--seed':
+      options.seed = Number(args[++i]);
+      break;
+    case '--blacklist':
+      options.blacklist = fs.readFileSync(args[++i], 'utf8').split(/\r?\n/);
+      break;
+    case '--stdout':
+      options.stdout = true;
+      break;
+    default:
+      usage();
+  }
+}
 
-Add project-specific names to a file, one per line:
+if (!fs.existsSync(input)) {
+  throw new Error('Input file does not exist: ' + input);
+}
 
-```text
-MyRemote
-MyService
-```
+const source = fs.readFileSync(input, 'utf8');
+const result = obfuscate(source, options);
+const output = result.code + '\n';
 
-Then pass `--blacklist globals.txt`. The built-in list includes `game`, `workspace`, `script`, `Instance`, `Vector3`, `Color3`, `UDim2`, `Enum`, `task`, `pcall`, `getgenv`, and standard Lua functions.
+if (options.stdout || !outputPath) {
+  process.stdout.write(output);
+} else {
+  fs.writeFileSync(outputPath, output, 'utf8');
+}
 
-## Design notes
-
-The implementation deliberately does not claim to provide a custom VM, anti-debugging, or anti-tamper system. Those features require a complete Luau parser, compiler, runtime compatibility tests, and a threat model. The current architecture leaves room for adding AST passes later without making the safe lexer pass dependent on a fragile regexp.
+if (!options.stdout) {
+  console.error(`Obfuscated ${input} (${result.stats.tokens} tokens, ${result.stats.renamed} names renamed)`);
+}
