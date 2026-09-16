@@ -1,0 +1,17 @@
+{
+  "name": "roblox-lua-obfuscator",
+  "version": "1.0.0",
+  "description": "A dependency-free Lua/Luau source obfuscator for Roblox projects.",
+  "main": "src/obfuscator.js",
+  "bin": {
+    "lua-obfuscator": "bin/lua-obfuscator.js"
+  },
+  "scripts": {
+    "test": "node test/obfuscator.test.js"
+  },
+  "keywords": ["lua", "luau", "roblox", "obfuscator"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}
